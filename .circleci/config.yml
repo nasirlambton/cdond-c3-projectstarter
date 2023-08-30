@@ -253,7 +253,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "a4:9d:96:eb:ac:e1:aa:05:fb:97:f2:1d:e8:2c:0e:9c"
+            - "48:96:7a:5f:a8:a3:79:4d:c7:03:71:a4:37:ad:51:95"
       - attach_workspace:
           at: ~/
     
@@ -300,7 +300,7 @@ jobs:
 
       - add_ssh_keys:
           fingerprints: 
-            - "a4:9d:96:eb:ac:e1:aa:05:fb:97:f2:1d:e8:2c:0e:9c"
+            - "48:96:7a:5f:a8:a3:79:4d:c7:03:71:a4:37:ad:51:95"
       - attach_workspace:
           at: ~/
 
@@ -477,8 +477,8 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
+      - deploy-frontend:
+          requires: [run-migrations]
       # - deploy-backend:
       #     requires: [run-migrations]
       # - smoke-test:
