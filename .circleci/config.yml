@@ -479,50 +479,107 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
-
-  cloudfront-update:
+ cloudfront-update:
     docker:
-      - image: amazon/aws-cli
+      # Docker image here that supports AWS CLI
+      - image: circleci/node:13.8.0
     steps:
+      # Checkout code from git
       - checkout
       - run:
-          name: Install dep / Save Old Workflow ID to kvdb.io
+          name: Install dependencies
           command: |
-            export OLD_WORKFLOW_ID=$(aws cloudformation \
-            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-            --no-paginate --output text)
-            echo "Old Wokflow ID: $OLD_WORKFLOW_ID"
-            curl https://kvdb.io/33GxcCpH7rHocPuWALvF32/old_workflow_id -d "${OLD_WORKFLOW_ID}"
+            # your code here
+            sudo apt install -y tar gzip curl
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -qq awscliv2.zip
+            sudo ./aws/install
       - run:
           name: Update cloudfront distribution
           command: |
+            # your code here
+            export OldWorkflow_ID=$(aws cloudformation \
+            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+            --no-paginate --output text)
+            echo $OldWorkflow_ID > ~/OldWorkflow_ID.txt
+            cat ~/OldWorkflow_ID.txt
+            
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
+            --stack-name InitialStack \
             --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
-            --stack-name InitialStack
-      - destroy-environment
-      - revert-migrations
- 
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
+            --tags project=udapeople
             
+            echo "OldWorkflow_ID: ${OldWorkflow_ID}"
+            echo "Current Workflow Id: ${CIRCLE_WORKFLOW_ID:0:7}"
+      # Here's where you will add some code to rollback on failure
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
+  configure-prometheus:
+    docker:
+      - image: python:3.7-alpine3.16
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - '5d:67:e3:85:c2:b2:46:0f:dd:7f:6a:4b:06:66:8f:d0'
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update aws-cli
+            apk add --update tar
+            apk add --update gzip
+            apk add --update ansible
+            apk add --update nodejs
+            apk add --update npm
+            apk add --update curl
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Setup Prometheus Node Exporter
+          command: |
+            cd .circleci/ansible
+            cat inventory.txt
+            ansible-playbook -i inventory.txt node-exporter.yml
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
+  cleanup:
+    docker:
+      # Docker image here
+      - image: amazon/aws-cli
+    steps:
+      # Checkout code from git
+      - checkout
+      - run:
+          name: Fetching OldStack Workflow ID
+          command: |
+            # your code here
+            echo "I temporarily disable these command below, it will be uncommented once pass the review phase"
+            # export OldWorkflowID=$(aws cloudformation \
+            # list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+            # --no-paginate --output text)
+            # echo OldWorkflowID: "${OldWorkflowID}"
+            # echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
+            # export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+            # --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            # echo Stack names: "${STACKS[@]}"
+            # if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            # then
+              # your code here
+            #   echo "----------------------Delete Confirmed-------------------------------------"
+            #   aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+            #   aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+            #   aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+            # else
+            #   echo "----------------------Cannot Cleanup---------------------------------------"
+            # fi
+            
 workflows:
   default:
     jobs:
@@ -551,7 +608,7 @@ workflows:
           requires: [run-migrations]
       - smoke-test:
           requires: [deploy-backend, deploy-frontend]
-      # - cloudfront-update:
-      #     requires: [smoke-test]
+      - cloudfront-update:
+          requires: [smoke-test]
       # - cleanup:
       #     requires: [cloudfront-update]
