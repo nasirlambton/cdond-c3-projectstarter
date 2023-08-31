@@ -1,22 +1,32 @@
 ---
-- name: "Add Node.js from source"
+- name: "Create directory for backend"
+  file:
+    path: ~/backend-app
+    state: directory
+
+- name: "Unarchive backend files"
+  unarchive:
+    src: artifact.tar.gz
+    dest: ~/backend-app
+
+- name: "Install dependencies"
+  shell: |
+    cd ~/backend-app
+    npm i
+
+- name: "Start backend application with PM2"
+  shell: |
+    cd ~/backend-app/
+    pm2 stop default
+    pm2 delete default
+    pm2 start npm -- start
+  register: execute_node
+
+- name: print message
+  debug:
+    msg: "{{ execute_node.stdout_lines }}"
+
+- name: "Configure pm2 to start as service"
   become: true
   shell: |
-    curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-- name: "Install Node.js 16"
-  become: true
-  apt:
-    name: ["nodejs"]
-    state: latest
-    update_cache: yes
-
-- name: "Install PM2 Globally"
-  npm:
-    name: pm2
-    global: yes
-
-- name: "move env variables to /etc/profile.d/"
-  become: true
-  copy:
-    src: myenv.sh
-    dest: /etc/profile.d/
+    env PATH=$PATH:/usr/local/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
