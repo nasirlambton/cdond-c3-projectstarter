@@ -1,0 +1,4 @@
+[URL01] https://github.com/nasirlambton/cdond-c3-projectstarter
+[URL02] http://udapeople-34784bc.s3-website-us-east-1.amazonaws.com/
+[URL03] http://db2mohn1jm9c.cloudfront.net/#/employees
+[URL05] http://ec2-52-204-242-70.compute-1.amazonaws.com:9090/targets
